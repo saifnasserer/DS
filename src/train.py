@@ -5,11 +5,9 @@ from typing import Tuple
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.data_collection import load_data
-from src.data_cleaning import clean_dataframe, clean_text
-from src.feature_engineering import preprocess_text
+from src.preprocess import load_data, clean_dataframe, clean_text, preprocess_text
 from src.modeling import train_models
-from src.evaluation import evaluate
+from src.evaluate import evaluate
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
@@ -21,7 +19,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def run_pipeline(data_path: str) -> Tuple[BaseEstimator, TfidfVectorizer]:
+def train(data_path: str, model_dir: str = "ml_model") -> Tuple[BaseEstimator, TfidfVectorizer]:
     logger.info("Starting training pipeline")
     
     try:
@@ -60,13 +58,31 @@ def run_pipeline(data_path: str) -> Tuple[BaseEstimator, TfidfVectorizer]:
             logger.info(report)
         
         logger.info("Saving models")
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        model_path = os.path.join(project_root, "final_sentiment_model.pkl")
-        vectorizer_path = os.path.join(project_root, "tfidf_vectorizer.pkl")
+        os.makedirs(model_dir, exist_ok=True)
+        model_path = os.path.join(model_dir, "model.pkl")
+        vectorizer_path = os.path.join(model_dir, "vectorizer.pkl")
         joblib.dump(model, model_path)
         joblib.dump(vectorizer, vectorizer_path)
         logger.info(f"Model saved to: {model_path}")
         logger.info(f"Vectorizer saved to: {vectorizer_path}")
+        
+        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+        y_pred = model.predict(X_test)
+        metrics = {
+            "accuracy": float(accuracy_score(y_test, y_pred)),
+            "precision": float(precision_score(y_test, y_pred, average='weighted')),
+            "recall": float(recall_score(y_test, y_pred, average='weighted')),
+            "f1_score": float(f1_score(y_test, y_pred, average='weighted')),
+            "model_type": "Logistic Regression"
+        }
+        
+        import json
+        from datetime import datetime
+        metrics["training_date"] = datetime.now().isoformat()
+        metrics_path = os.path.join(model_dir, "metrics.json")
+        with open(metrics_path, 'w') as f:
+            json.dump(metrics, f, indent=2)
+        logger.info(f"Metrics saved to: {metrics_path}")
 
         logger.info("Training pipeline completed successfully")
         return model, vectorizer
@@ -80,10 +96,11 @@ def run_pipeline(data_path: str) -> Tuple[BaseEstimator, TfidfVectorizer]:
 
 if __name__ == "__main__":
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_path = os.path.join(project_root, "data", "train.csv")
+    data_path = os.path.join(project_root, "data", "raw", "train.csv")
     
     if not os.path.exists(data_path):
         logger.error(f"Training data not found at {data_path}")
         sys.exit(1)
     
-    run_pipeline(data_path)
+    train(data_path)
+

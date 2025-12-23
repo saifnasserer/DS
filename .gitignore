@@ -23,11 +23,12 @@ wheels/
 .installed.cfg
 *.egg
 
-# Model files
-*.pkl
-*.h5
-*.joblib
-*.model
+# Model files (keep structure, ignore contents)
+ml_model/*.pkl
+ml_model/*.h5
+ml_model/*.joblib
+ml_model/*.model
+!ml_model/.gitkeep
 
 # Jupyter Notebook
 .ipynb_checkpoints
